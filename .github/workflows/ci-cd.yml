@@ -100,9 +100,26 @@ jobs:
     needs: [backend-test]
     steps:
       - uses: actions/checkout@v4
+
+      # 1. Setup Java and enable automatic caching of the ~/.m2 folder
+      - name: Set up JDK 17 & Cache Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # 2. Pre-download dependencies locally so Trivy doesn't fetch them remotely
+      - name: Pre-resolve Maven Dependencies
+        run: |
+          cd backend
+          mvn dependency:resolve -B
+
+      # 3. Run Trivy using the cached local packages
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
           severity: CRITICAL,HIGH
+
