@@ -75,14 +75,22 @@ jobs:
         service: [backend, frontend, ai]
     steps:
       - uses: actions/checkout@v4
+      
+      # FIX: This step converts "SimranJotK/mining_platform" to lowercase values safely
+      - name: Set lowercase repository name env
+        run: |
+          echo "LOWER_REPO=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
       - name: Build Docker Image
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.service == 'ai' && 'ai' || matrix.service }}
           push: false
-          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.service }}:latest
+          # FIX: Replaced github.repository with our new LOWER_REPO variable
+          tags: ${{ env.REGISTRY }}/${{ env.LOWER_REPO }}/${{ matrix.service }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
