@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: crypto-mining-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-password}
+      MYSQL_DATABASE: crypto_mining_platform
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../backend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crypto-network
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: crypto-mining-backend
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: crypto_mining_platform
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-password}
+      JWT_SECRET: ${JWT_SECRET:-your-256-bit-secret-key-change-in-production-must-be-at-least-32-chars}
+      ENCRYPTION_MASTER_KEY: ${ENCRYPTION_MASTER_KEY:-change-this-master-key-in-production-32b}
+      AI_SERVICE_URL: http://ai-service:5000
+      MINING_SIMULATION: "true"
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/api/v1/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - crypto-network
+
+  ai-service:
+    build:
+      context: ../ai
+      dockerfile: Dockerfile
+    container_name: crypto-mining-ai
+    environment:
+      AI_PORT: 5000
+      FLASK_DEBUG: "false"
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - crypto-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: crypto-mining-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - crypto-network
+
+volumes:
+  mysql_data:
+
+networks:
+  crypto-network:
+    driver: bridge

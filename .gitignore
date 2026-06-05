@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+backend/target/
+ai/__pycache__/
+ai/.venv/
+*.pyc
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Environment
+.env
+cloud/.env
+*.log
+
+# Java
+*.class
+*.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
+
+# Test / coverage
+coverage/
+*.lcov

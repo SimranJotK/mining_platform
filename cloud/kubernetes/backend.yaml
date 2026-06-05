@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backend-secret
+  namespace: crypto-mining
+type: Opaque
+stringData:
+  JWT_SECRET: your-256-bit-secret-key-change-in-production-must-be-at-least-32-chars
+  ENCRYPTION_MASTER_KEY: change-this-master-key-in-production-32b
+  DB_PASSWORD: password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: crypto-mining
+data:
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_NAME: crypto_mining_platform
+  DB_USER: root
+  AI_SERVICE_URL: http://ai-service:5000
+  MINING_SIMULATION: "true"
+  CORS_ORIGINS: http://localhost:3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: crypto-mining
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: crypto-mining-backend:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: backend-config
+            - secretRef:
+                name: backend-secret
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: crypto-mining
+spec:
+  selector:
+    app: backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
